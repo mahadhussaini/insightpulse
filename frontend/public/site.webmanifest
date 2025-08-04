@@ -1,0 +1,16 @@
+{
+  "name": "InsightPulse - AI-Powered Customer Feedback",
+  "short_name": "InsightPulse",
+  "description": "AI-powered customer feedback analysis platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3b82f6",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+} 
