@@ -8,6 +8,170 @@ const { Op } = require('sequelize');
 
 const router = express.Router();
 
+// General analytics endpoint
+router.get('/', [
+  query('timeRange').optional().isIn(['7d', '30d', '90d']),
+  query('source').optional().isString(),
+  query('dateFrom').optional().isISO8601(),
+  query('dateTo').optional().isISO8601()
+], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      error: 'Validation failed',
+      details: errors.array()
+    });
+  }
+
+  const { timeRange = '30d', source, dateFrom, dateTo } = req.query;
+  const whereClause = { userId: req.user.id };
+
+  // Source filter
+  if (source && source !== 'all') {
+    whereClause.source = source;
+  }
+
+  // Date range filter based on timeRange
+  if (timeRange) {
+    const now = new Date();
+    let startDate;
+    switch (timeRange) {
+      case '7d':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case '90d':
+        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
+    whereClause.createdAt = { [Op.gte]: startDate };
+  }
+
+  // Custom date range filter
+  if (dateFrom || dateTo) {
+    whereClause.createdAt = {};
+    if (dateFrom) whereClause.createdAt[Op.gte] = new Date(dateFrom);
+    if (dateTo) whereClause.createdAt[Op.lte] = new Date(dateTo);
+  }
+
+  // Get feedback statistics
+  const totalFeedback = await Feedback.count({ where: whereClause });
+  const positiveFeedback = await Feedback.count({ where: { ...whereClause, sentiment: 'positive' } });
+  const negativeFeedback = await Feedback.count({ where: { ...whereClause, sentiment: 'negative' } });
+  const neutralFeedback = await Feedback.count({ where: { ...whereClause, sentiment: 'neutral' } });
+
+  // Get average sentiment score
+  const avgSentimentResult = await Feedback.findOne({
+    where: whereClause,
+    attributes: [
+      [require('sequelize').fn('AVG', require('sequelize').literal('CASE WHEN sentiment = \'positive\' THEN 1 WHEN sentiment = \'negative\' THEN -1 ELSE 0 END')), 'avgSentiment']
+    ]
+  });
+
+  // Get sentiment distribution
+  const sentimentStats = await Feedback.findAll({
+    where: whereClause,
+    attributes: [
+      'sentiment',
+      [require('sequelize').fn('COUNT', require('sequelize').col('sentiment')), 'count']
+    ],
+    group: ['sentiment']
+  });
+
+  // Get urgency distribution
+  const urgencyStats = await Feedback.findAll({
+    where: whereClause,
+    attributes: [
+      'urgency',
+      [require('sequelize').fn('COUNT', require('sequelize').col('urgency')), 'count']
+    ],
+    group: ['urgency']
+  });
+
+  // Get source distribution
+  const sourceStats = await Feedback.findAll({
+    where: whereClause,
+    attributes: [
+      'source',
+      [require('sequelize').fn('COUNT', require('sequelize').col('source')), 'count']
+    ],
+    group: ['source']
+  });
+
+  // Get trends data
+  const trends = await Feedback.findAll({
+    where: whereClause,
+    attributes: [
+      [require('sequelize').fn('DATE', require('sequelize').col('created_at')), 'date'],
+      [require('sequelize').fn('COUNT', require('sequelize').col('id')), 'total'],
+      [require('sequelize').fn('AVG', require('sequelize').literal('CASE WHEN sentiment = \'positive\' THEN 1 WHEN sentiment = \'negative\' THEN -1 ELSE 0 END')), 'avgSentiment'],
+      [require('sequelize').fn('COUNT', require('sequelize').literal('CASE WHEN sentiment = \'positive\' THEN 1 END')), 'positive'],
+      [require('sequelize').fn('COUNT', require('sequelize').literal('CASE WHEN sentiment = \'negative\' THEN 1 END')), 'negative'],
+      [require('sequelize').fn('COUNT', require('sequelize').literal('CASE WHEN sentiment = \'neutral\' THEN 1 END')), 'neutral']
+    ],
+    group: [require('sequelize').fn('DATE', require('sequelize').col('created_at'))],
+    order: [[require('sequelize').fn('DATE', require('sequelize').col('created_at')), 'ASC']]
+  });
+
+  // Get top categories
+  const topCategories = await Feedback.findAll({
+    where: whereClause,
+    attributes: [
+      'categories',
+      [require('sequelize').fn('COUNT', require('sequelize').col('id')), 'count']
+    ],
+    group: ['categories'],
+    order: [[require('sequelize').fn('COUNT', require('sequelize').col('id')), 'DESC']],
+    limit: 5
+  });
+
+  res.json({
+    analytics: {
+      overview: {
+        totalFeedback,
+        positive: positiveFeedback,
+        negative: negativeFeedback,
+        neutral: neutralFeedback,
+        avgSentimentScore: parseFloat(avgSentimentResult?.dataValues.avgSentiment || 0),
+        sentimentDistribution: sentimentStats.reduce((acc, stat) => {
+          acc[stat.sentiment] = parseInt(stat.dataValues.count);
+          return acc;
+        }, {}),
+        urgencyDistribution: urgencyStats.reduce((acc, stat) => {
+          acc[stat.urgency] = parseInt(stat.dataValues.count);
+          return acc;
+        }, {}),
+        sourceDistribution: sourceStats.reduce((acc, stat) => {
+          acc[stat.source] = parseInt(stat.dataValues.count);
+          return acc;
+        }, {})
+      },
+      trends: trends.map(trend => ({
+        date: trend.dataValues.date,
+        total: parseInt(trend.dataValues.total),
+        avgSentiment: parseFloat(trend.dataValues.avgSentiment || 0),
+        positive: parseInt(trend.dataValues.positive),
+        negative: parseInt(trend.dataValues.negative),
+        neutral: parseInt(trend.dataValues.neutral)
+      })),
+      topCategories: topCategories.map(cat => ({
+        category: cat.dataValues.categories,
+        count: parseInt(cat.dataValues.count)
+      })),
+      filters: {
+        timeRange,
+        source: source || 'all',
+        dateFrom,
+        dateTo
+      }
+    }
+  });
+}));
+
 // Get dashboard overview metrics
 router.get('/overview', [
   query('dateFrom').optional().isISO8601(),
@@ -143,15 +307,15 @@ router.get('/sentiment-trends', [
   switch (period) {
     case 'daily':
       dateFormat = 'YYYY-MM-DD';
-      groupBy = require('sequelize').fn('DATE', require('sequelize').col('createdAt'));
+      groupBy = require('sequelize').fn('DATE', require('sequelize').col('created_at'));
       break;
     case 'weekly':
       dateFormat = 'YYYY-WW';
-      groupBy = require('sequelize').fn('DATE_TRUNC', 'week', require('sequelize').col('createdAt'));
+      groupBy = require('sequelize').fn('DATE_TRUNC', 'week', require('sequelize').col('created_at'));
       break;
     case 'monthly':
       dateFormat = 'YYYY-MM';
-      groupBy = require('sequelize').fn('DATE_TRUNC', 'month', require('sequelize').col('createdAt'));
+      groupBy = require('sequelize').fn('DATE_TRUNC', 'month', require('sequelize').col('created_at'));
       break;
   }
 
@@ -471,12 +635,12 @@ router.get('/weekly-insights', asyncHandler(async (req, res) => {
   const trends = await Feedback.findAll({
     where: whereClause,
     attributes: [
-      [require('sequelize').fn('DATE', require('sequelize').col('createdAt')), 'date'],
+      [require('sequelize').fn('DATE', require('sequelize').col('created_at')), 'date'],
       [require('sequelize').fn('COUNT', require('sequelize').col('id')), 'count'],
       [require('sequelize').fn('AVG', require('sequelize').literal('CASE WHEN sentiment = \'positive\' THEN 1 WHEN sentiment = \'negative\' THEN -1 ELSE 0 END')), 'avgSentiment']
     ],
-    group: [require('sequelize').fn('DATE', require('sequelize').col('createdAt'))],
-    order: [[require('sequelize').fn('DATE', require('sequelize').col('createdAt')), 'ASC']]
+    group: [require('sequelize').fn('DATE', require('sequelize').col('created_at'))],
+    order: [[require('sequelize').fn('DATE', require('sequelize').col('created_at')), 'ASC']]
   });
 
   const feedbackStats = {
@@ -568,15 +732,15 @@ router.get('/trends', [
   const trends = await Feedback.findAll({
     where: whereClause,
     attributes: [
-      [require('sequelize').fn('DATE', require('sequelize').col('createdAt')), 'date'],
+      [require('sequelize').fn('DATE', require('sequelize').col('created_at')), 'date'],
       [require('sequelize').fn('COUNT', require('sequelize').col('id')), 'total'],
       [require('sequelize').fn('AVG', require('sequelize').literal('CASE WHEN sentiment = \'positive\' THEN 1 WHEN sentiment = \'negative\' THEN -1 ELSE 0 END')), 'avgSentiment'],
       [require('sequelize').fn('COUNT', require('sequelize').literal('CASE WHEN sentiment = \'positive\' THEN 1 END')), 'positive'],
       [require('sequelize').fn('COUNT', require('sequelize').literal('CASE WHEN sentiment = \'negative\' THEN 1 END')), 'negative'],
       [require('sequelize').fn('COUNT', require('sequelize').literal('CASE WHEN sentiment = \'neutral\' THEN 1 END')), 'neutral']
     ],
-    group: [require('sequelize').fn('DATE', require('sequelize').col('createdAt'))],
-    order: [[require('sequelize').fn('DATE', require('sequelize').col('createdAt')), 'ASC']]
+    group: [require('sequelize').fn('DATE', require('sequelize').col('created_at'))],
+    order: [[require('sequelize').fn('DATE', require('sequelize').col('created_at')), 'ASC']]
   });
 
   res.json({
@@ -640,12 +804,12 @@ router.get('/weekly-summary', asyncHandler(async (req, res) => {
   const trends = await Feedback.findAll({
     where: whereClause,
     attributes: [
-      [require('sequelize').fn('DATE', require('sequelize').col('createdAt')), 'date'],
+      [require('sequelize').fn('DATE', require('sequelize').col('created_at')), 'date'],
       [require('sequelize').fn('COUNT', require('sequelize').col('id')), 'count'],
       [require('sequelize').fn('AVG', require('sequelize').literal('CASE WHEN sentiment = \'positive\' THEN 1 WHEN sentiment = \'negative\' THEN -1 ELSE 0 END')), 'avgSentiment']
     ],
-    group: [require('sequelize').fn('DATE', require('sequelize').col('createdAt'))],
-    order: [[require('sequelize').fn('DATE', require('sequelize').col('createdAt')), 'ASC']]
+    group: [require('sequelize').fn('DATE', require('sequelize').col('created_at'))],
+    order: [[require('sequelize').fn('DATE', require('sequelize').col('created_at')), 'ASC']]
   });
 
   const feedbackStats = {

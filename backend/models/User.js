@@ -101,6 +101,7 @@ const User = sequelize.define('User', {
   }
 }, {
   timestamps: true,
+  underscored: true,
   hooks: {
     beforeCreate: async (user) => {
       if (user.password) {

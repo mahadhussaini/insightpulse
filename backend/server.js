@@ -19,6 +19,15 @@ const alertsRoutes = require('./routes/alerts');
 const integrationsRoutes = require('./routes/integrations');
 const webhooksRoutes = require('./routes/webhooks');
 const dashboardRoutes = require('./routes/dashboard');
+const feedbackGPTRoutes = require('./routes/feedbackGPT');
+const segmentationRoutes = require('./routes/segmentation');
+const churnPredictionRoutes = require('./routes/churnPrediction');
+const slackIntegrationRoutes = require('./routes/slackIntegration');
+const subscriptionRoutes = require('./routes/subscription');
+const competitorAnalysisRoutes = require('./routes/competitorAnalysis');
+const reportingRoutes = require('./routes/reporting');
+const whiteLabelRoutes = require('./routes/whiteLabel');
+const apiAccessRoutes = require('./routes/apiAccess');
 
 // Import middleware
 const { authenticateToken } = require('./middleware/auth');
@@ -50,13 +59,18 @@ app.use(cors({
   credentials: true
 }));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.'
-});
-app.use('/api/', limiter);
+// Rate limiting - disabled for development
+if (process.env.NODE_ENV === 'production') {
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+    message: 'Too many requests from this IP, please try again later.'
+  });
+  app.use('/api/', limiter);
+  console.log('🔒 Rate limiting enabled for production');
+} else {
+  console.log('🔓 Rate limiting disabled for development');
+}
 
 // Body parsing middleware
 app.use(compression());
@@ -81,6 +95,15 @@ app.use('/api/alerts', authenticateToken, alertsRoutes);
 app.use('/api/integrations', authenticateToken, integrationsRoutes);
 app.use('/api/webhooks', webhooksRoutes);
 app.use('/api/dashboard', authenticateToken, dashboardRoutes);
+app.use('/api/feedback-gpt', authenticateToken, feedbackGPTRoutes);
+app.use('/api/segmentation', authenticateToken, segmentationRoutes);
+app.use('/api/churn-prediction', authenticateToken, churnPredictionRoutes);
+app.use('/api/slack-integration', authenticateToken, slackIntegrationRoutes);
+app.use('/api/subscription', authenticateToken, subscriptionRoutes);
+app.use('/api/competitor-analysis', authenticateToken, competitorAnalysisRoutes);
+app.use('/api/reporting', authenticateToken, reportingRoutes);
+app.use('/api/white-label', authenticateToken, whiteLabelRoutes);
+app.use('/api/api-access', authenticateToken, apiAccessRoutes);
 
 // Socket.IO for real-time updates
 io.on('connection', (socket) => {

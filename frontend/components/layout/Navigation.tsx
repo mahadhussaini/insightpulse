@@ -1,63 +1,161 @@
 'use client';
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-  LayoutDashboard,
-  Settings,
-  MessageSquare,
+  Home,
   BarChart3,
-  Zap,
+  MessageSquare,
+  Settings,
   Bell,
   User,
   LogOut,
   Menu,
-  X
+  X,
+  Zap,
+  TrendingUp,
+  Users,
+  Shield,
+  CreditCard,
+  Palette,
+  Globe,
+  Database,
+  Activity,
+  AlertTriangle,
+  FileText,
+  Target,
+  Brain,
+  Slack,
+  ExternalLink
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSocket } from '@/contexts/SocketContext';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 
 interface NavigationProps {
-  currentPage?: string;
+  currentPage: string;
 }
 
 const navigationItems = [
   {
     name: 'Dashboard',
     href: '/dashboard',
-    icon: LayoutDashboard,
-    badge: null
-  },
-  {
-    name: 'Feedback',
-    href: '/feedback',
-    icon: MessageSquare,
-    badge: null
+    icon: Home,
+    description: 'Overview and analytics'
   },
   {
     name: 'Analytics',
     href: '/analytics',
     icon: BarChart3,
-    badge: null
+    description: 'Detailed insights and trends'
+  },
+  {
+    name: 'Feedback',
+    href: '/feedback',
+    icon: MessageSquare,
+    description: 'Manage customer feedback'
+  },
+  {
+    name: 'Feedback GPT',
+    href: '/feedback-gpt',
+    icon: Brain,
+    description: 'AI-powered feedback analysis'
   },
   {
     name: 'Integrations',
     href: '/integrations',
-    icon: Zap,
-    badge: null
+    icon: Database,
+    description: 'Connect your tools'
   },
   {
     name: 'Alerts',
     href: '/alerts',
-    icon: Bell,
-    badge: '3'
+    icon: AlertTriangle,
+    description: 'Monitor and manage alerts'
+  },
+  {
+    name: 'Segmentation',
+    href: '/segmentation',
+    icon: Users,
+    description: 'Customer segmentation'
+  },
+  {
+    name: 'Churn Prediction',
+    href: '/churn-prediction',
+    icon: TrendingUp,
+    description: 'Predict customer churn'
+  },
+  {
+    name: 'Competitor Analysis',
+    href: '/competitor-analysis',
+    icon: Target,
+    description: 'Analyze competitors'
+  },
+  {
+    name: 'Slack Integration',
+    href: '/slack-integration',
+    icon: Slack,
+    description: 'Slack notifications'
+  },
+  {
+    name: 'Reporting',
+    href: '/reporting',
+    icon: FileText,
+    description: 'Generate reports'
+  },
+  {
+    name: 'API Access',
+    href: '/api-access',
+    icon: ExternalLink,
+    description: 'API documentation'
+  },
+  {
+    name: 'White Label',
+    href: '/white-label',
+    icon: Palette,
+    description: 'Customize branding'
+  },
+  {
+    name: 'Subscription',
+    href: '/subscription',
+    icon: CreditCard,
+    description: 'Manage subscription'
   }
 ];
 
-export default function Navigation({ currentPage = 'dashboard' }: NavigationProps) {
+const settingsItems = [
+  {
+    name: 'Profile',
+    href: '/settings/profile',
+    icon: User,
+    description: 'Manage your account'
+  },
+  {
+    name: 'Preferences',
+    href: '/settings/preferences',
+    icon: Settings,
+    description: 'Customize your experience'
+  },
+  {
+    name: 'Security',
+    href: '/settings/security',
+    icon: Shield,
+    description: 'Security settings'
+  },
+  {
+    name: 'Notifications',
+    href: '/settings/notifications',
+    icon: Bell,
+    description: 'Notification preferences'
+  }
+];
+
+export default function Navigation({ currentPage }: NavigationProps) {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
   const { user, logout } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { isConnected } = useSocket();
 
   const handleLogout = async () => {
     try {
@@ -67,169 +165,179 @@ export default function Navigation({ currentPage = 'dashboard' }: NavigationProp
     }
   };
 
+  const getSubscriptionColor = (subscription: string) => {
+    switch (subscription) {
+      case 'enterprise': return 'from-purple-500 to-purple-600';
+      case 'team': return 'from-blue-500 to-blue-600';
+      case 'pro': return 'from-green-500 to-green-600';
+      default: return 'from-gray-500 to-gray-600';
+    }
+  };
+
   return (
     <>
       {/* Mobile menu button */}
-      <div className="lg:hidden">
+      <div className="lg:hidden fixed top-4 left-4 z-50">
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => setSidebarOpen(true)}
-          leftIcon={<Menu className="h-5 w-5" />}
-        />
+          onClick={() => setIsMobileOpen(!isMobileOpen)}
+          className="p-2"
+        >
+          {isMobileOpen ? (
+            <X className="h-5 w-5" />
+          ) : (
+            <Menu className="h-5 w-5" />
+          )}
+        </Button>
       </div>
 
-      {/* Sidebar for desktop */}
-      <div className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:z-50 lg:bg-white lg:border-r lg:border-gray-200">
-        <div className="flex flex-col flex-grow pt-5 pb-4 overflow-y-auto">
-          {/* Logo */}
-          <div className="flex items-center flex-shrink-0 px-6">
-            <div className="flex items-center">
-              <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">I</span>
+      {/* Mobile menu overlay */}
+      <AnimatePresence>
+        {isMobileOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+            onClick={() => setIsMobileOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar */}
+      <motion.div
+        initial={{ x: -300 }}
+        animate={{ x: 0 }}
+        className={`fixed inset-y-0 left-0 z-30 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+          isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}
+      >
+        <div className="flex flex-col h-full">
+          {/* Header */}
+          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                <Zap className="h-5 w-5 text-white" />
               </div>
-              <span className="ml-3 text-xl font-bold text-gray-900">InsightPulse</span>
+              <div>
+                <h1 className="text-lg font-bold text-gray-900">InsightPulse</h1>
+                <div className="flex items-center space-x-2">
+                  <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+                  <span className="text-xs text-gray-500">
+                    {isConnected ? 'Connected' : 'Disconnected'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Collapse button for desktop */}
+            <button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="hidden lg:block p-1 rounded-md hover:bg-gray-100"
+            >
+              <Menu className="h-4 w-4 text-gray-500" />
+            </button>
+          </div>
+
+          {/* User info */}
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                <User className="h-5 w-5 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  {user?.firstName} {user?.lastName}
+                </p>
+                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                <div className="flex items-center mt-1">
+                  <Badge 
+                    variant="default" 
+                    size="sm"
+                    className={`bg-gradient-to-r ${getSubscriptionColor(user?.subscription || 'free')} text-white border-0`}
+                  >
+                    {user?.subscription || 'free'}
+                  </Badge>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Navigation */}
-          <nav className="mt-8 flex-1 px-6 space-y-1">
-            {navigationItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = currentPage === item.href.replace('/', '');
-              
-              return (
-                <motion.a
-                  key={item.name}
-                  href={item.href}
-                  className={`group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                    isActive
-                      ? 'bg-primary-50 text-primary-700 border-r-2 border-primary-500'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                  }`}
-                  whileHover={{ x: 4 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Icon className={`mr-3 h-5 w-5 ${
-                    isActive ? 'text-primary-500' : 'text-gray-400 group-hover:text-gray-500'
-                  }`} />
-                  {item.name}
-                  {item.badge && (
-                    <Badge variant="error" size="sm" className="ml-auto">
-                      {item.badge}
-                    </Badge>
-                  )}
-                </motion.a>
-              );
-            })}
+          <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+            <div className="mb-4">
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                Main
+              </h3>
+              <div className="space-y-1">
+                {navigationItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = currentPage === item.href.split('/')[1];
+                  
+                  return (
+                    <motion.a
+                      key={item.name}
+                      href={item.href}
+                      className={`group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                        isActive
+                          ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
+                          : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                      }`}
+                      whileHover={{ x: 4 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <Icon className={`mr-3 h-5 w-5 ${
+                        isActive ? 'text-blue-700' : 'text-gray-400 group-hover:text-gray-500'
+                      }`} />
+                      <span className="truncate">{item.name}</span>
+                    </motion.a>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                Settings
+              </h3>
+              <div className="space-y-1">
+                {settingsItems.map((item) => {
+                  const Icon = item.icon;
+                  
+                  return (
+                    <motion.a
+                      key={item.name}
+                      href={item.href}
+                      className="group flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-50 hover:text-gray-900 transition-colors"
+                      whileHover={{ x: 4 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <Icon className="mr-3 h-5 w-5 text-gray-400 group-hover:text-gray-500" />
+                      <span className="truncate">{item.name}</span>
+                    </motion.a>
+                  );
+                })}
+              </div>
+            </div>
           </nav>
 
-          {/* User section */}
-          <div className="flex-shrink-0 px-6 py-4 border-t border-gray-200">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-gradient-to-br from-gray-400 to-gray-500 rounded-full flex items-center justify-center">
-                  <User className="h-4 w-4 text-white" />
-                </div>
-              </div>
-              <div className="ml-3 flex-1">
-                <p className="text-sm font-medium text-gray-900">
-                  {user?.firstName} {user?.lastName}
-                </p>
-                <p className="text-xs text-gray-500">{user?.email}</p>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleLogout}
-                leftIcon={<LogOut className="h-4 w-4" />}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile sidebar */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: sidebarOpen ? 1 : 0 }}
-        transition={{ duration: 0.2 }}
-        className={`fixed inset-0 z-50 lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`}
-      >
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
-        
-        <motion.div
-          initial={{ x: -300 }}
-          animate={{ x: sidebarOpen ? 0 : -300 }}
-          transition={{ duration: 0.3 }}
-          className="relative flex flex-col w-64 max-w-xs bg-white shadow-xl"
-        >
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-            <div className="flex items-center">
-              <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">I</span>
-              </div>
-              <span className="ml-3 text-xl font-bold text-gray-900">InsightPulse</span>
-            </div>
+          {/* Footer */}
+          <div className="p-4 border-t border-gray-200">
             <Button
               variant="ghost"
-              size="sm"
-              onClick={() => setSidebarOpen(false)}
-              leftIcon={<X className="h-5 w-5" />}
-            />
+              onClick={handleLogout}
+              className="w-full justify-start text-gray-700 hover:text-red-700 hover:bg-red-50"
+            >
+              <LogOut className="mr-3 h-5 w-5" />
+              <span>Sign out</span>
+            </Button>
           </div>
-
-          <div className="flex-1 px-6 py-4 space-y-1">
-            {navigationItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = currentPage === item.href.replace('/', '');
-              
-              return (
-                <a
-                  key={item.name}
-                  href={item.href}
-                  className={`group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                    isActive
-                      ? 'bg-primary-50 text-primary-700'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                  }`}
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <Icon className={`mr-3 h-5 w-5 ${
-                    isActive ? 'text-primary-500' : 'text-gray-400 group-hover:text-gray-500'
-                  }`} />
-                  {item.name}
-                  {item.badge && (
-                    <Badge variant="error" size="sm" className="ml-auto">
-                      {item.badge}
-                    </Badge>
-                  )}
-                </a>
-              );
-            })}
-          </div>
-
-          <div className="px-6 py-4 border-t border-gray-200">
-            <div className="flex items-center">
-              <div className="w-8 h-8 bg-gradient-to-br from-gray-400 to-gray-500 rounded-full flex items-center justify-center">
-                <User className="h-4 w-4 text-white" />
-              </div>
-              <div className="ml-3 flex-1">
-                <p className="text-sm font-medium text-gray-900">
-                  {user?.firstName} {user?.lastName}
-                </p>
-                <p className="text-xs text-gray-500">{user?.email}</p>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleLogout}
-                leftIcon={<LogOut className="h-4 w-4" />}
-              />
-            </div>
-          </div>
-        </motion.div>
+        </div>
       </motion.div>
+
+      {/* Main content margin for desktop */}
+      <div className="hidden lg:block lg:ml-64" />
     </>
   );
 } 

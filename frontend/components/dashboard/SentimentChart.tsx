@@ -14,10 +14,22 @@ interface SentimentChartProps {
 }
 
 export default function SentimentChart({ trends, timeRange }: SentimentChartProps) {
-  const total = trends.positive + trends.negative + trends.neutral;
-  const positivePercentage = total > 0 ? (trends.positive / total) * 100 : 0;
-  const negativePercentage = total > 0 ? (trends.negative / total) * 100 : 0;
-  const neutralPercentage = total > 0 ? (trends.neutral / total) * 100 : 0;
+  // Validate and sanitize input data
+  const safeTrends = {
+    positive: Number.isFinite(trends.positive) ? trends.positive : 0,
+    negative: Number.isFinite(trends.negative) ? trends.negative : 0,
+    neutral: Number.isFinite(trends.neutral) ? trends.neutral : 0
+  };
+
+  const total = safeTrends.positive + safeTrends.negative + safeTrends.neutral;
+  const positivePercentage = total > 0 ? (safeTrends.positive / total) * 100 : 0;
+  const negativePercentage = total > 0 ? (safeTrends.negative / total) * 100 : 0;
+  const neutralPercentage = total > 0 ? (safeTrends.neutral / total) * 100 : 0;
+
+  // Ensure percentages are valid numbers
+  const safePositivePercentage = Number.isFinite(positivePercentage) ? positivePercentage : 0;
+  const safeNegativePercentage = Number.isFinite(negativePercentage) ? negativePercentage : 0;
+  const safeNeutralPercentage = Number.isFinite(neutralPercentage) ? neutralPercentage : 0;
 
   const getTimeRangeLabel = (range: string) => {
     switch (range) {
@@ -33,8 +45,8 @@ export default function SentimentChart({ trends, timeRange }: SentimentChartProp
     {
       type: 'positive',
       label: 'Positive',
-      value: trends.positive,
-      percentage: positivePercentage,
+      value: safeTrends.positive,
+      percentage: safePositivePercentage,
       icon: Smile,
       color: 'green',
       gradient: 'from-green-500 to-green-600',
@@ -43,8 +55,8 @@ export default function SentimentChart({ trends, timeRange }: SentimentChartProp
     {
       type: 'negative',
       label: 'Negative',
-      value: trends.negative,
-      percentage: negativePercentage,
+      value: safeTrends.negative,
+      percentage: safeNegativePercentage,
       icon: Frown,
       color: 'red',
       gradient: 'from-red-500 to-red-600',
@@ -53,8 +65,8 @@ export default function SentimentChart({ trends, timeRange }: SentimentChartProp
     {
       type: 'neutral',
       label: 'Neutral',
-      value: trends.neutral,
-      percentage: neutralPercentage,
+      value: safeTrends.neutral,
+      percentage: safeNeutralPercentage,
       icon: Meh,
       color: 'gray',
       gradient: 'from-gray-500 to-gray-600',
@@ -154,13 +166,13 @@ export default function SentimentChart({ trends, timeRange }: SentimentChartProp
             {/* Trend indicator */}
             <div className="flex items-center justify-between">
               <div className="flex items-center text-sm">
-                {positivePercentage > negativePercentage ? (
+                {safePositivePercentage > safeNegativePercentage ? (
                   <TrendingUp className="h-4 w-4 text-green-500 mr-2" />
                 ) : (
                   <TrendingDown className="h-4 w-4 text-red-500 mr-2" />
                 )}
-                <span className={positivePercentage > negativePercentage ? 'text-green-600' : 'text-red-600'}>
-                  {positivePercentage > negativePercentage ? 'Improving' : 'Declining'}
+                <span className={safePositivePercentage > safeNegativePercentage ? 'text-green-600' : 'text-red-600'}>
+                  {safePositivePercentage > safeNegativePercentage ? 'Improving' : 'Declining'}
                 </span>
                 <span className="text-gray-500 ml-1">sentiment trend</span>
               </div>
@@ -170,7 +182,7 @@ export default function SentimentChart({ trends, timeRange }: SentimentChartProp
                 <div className="text-xs text-gray-500">Overall Score:</div>
                 <div className="px-2 py-1 rounded-full bg-gradient-to-r from-green-100 to-blue-100">
                   <span className="text-sm font-semibold text-gray-700">
-                    {positivePercentage > negativePercentage ? 'Positive' : 'Needs Attention'}
+                    {safePositivePercentage > safeNegativePercentage ? 'Positive' : 'Needs Attention'}
                   </span>
                 </div>
               </div>

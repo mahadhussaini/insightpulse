@@ -93,6 +93,7 @@ const Integration = sequelize.define('Integration', {
 }, {
   tableName: 'integrations',
   timestamps: true,
+  underscored: true,
   indexes: [
     {
       fields: ['user_id']

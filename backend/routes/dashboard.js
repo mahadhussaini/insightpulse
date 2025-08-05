@@ -112,12 +112,12 @@ router.get('/overview', [
       createdAt: { [Op.gte]: thirtyDaysAgo }
     },
     attributes: [
-      [require('sequelize').fn('DATE', require('sequelize').col('createdAt')), 'date'],
+      [require('sequelize').fn('DATE', require('sequelize').col('created_at')), 'date'],
       [require('sequelize').fn('COUNT', require('sequelize').col('id')), 'count'],
       [require('sequelize').fn('AVG', require('sequelize').literal('CASE WHEN sentiment = \'positive\' THEN 1 WHEN sentiment = \'negative\' THEN -1 ELSE 0 END')), 'avgSentiment']
     ],
-    group: [require('sequelize').fn('DATE', require('sequelize').col('createdAt'))],
-    order: [[require('sequelize').fn('DATE', require('sequelize').col('createdAt')), 'ASC']]
+    group: [require('sequelize').fn('DATE', require('sequelize').col('created_at'))],
+    order: [[require('sequelize').fn('DATE', require('sequelize').col('created_at')), 'ASC']]
   });
 
   res.json({
@@ -221,12 +221,12 @@ router.get('/', [
       createdAt: { [Op.gte]: thirtyDaysAgo }
     },
     attributes: [
-      [require('sequelize').fn('DATE', require('sequelize').col('createdAt')), 'date'],
+      [require('sequelize').fn('DATE', require('sequelize').col('created_at')), 'date'],
       [require('sequelize').fn('COUNT', require('sequelize').col('id')), 'count'],
       [require('sequelize').fn('AVG', require('sequelize').literal('CASE WHEN sentiment = \'positive\' THEN 1 WHEN sentiment = \'negative\' THEN -1 ELSE 0 END')), 'avgSentiment']
     ],
-    group: [require('sequelize').fn('DATE', require('sequelize').col('createdAt'))],
-    order: [[require('sequelize').fn('DATE', require('sequelize').col('createdAt')), 'ASC']]
+    group: [require('sequelize').fn('DATE', require('sequelize').col('created_at'))],
+    order: [[require('sequelize').fn('DATE', require('sequelize').col('created_at')), 'ASC']]
   });
 
   // Get recent feedback items

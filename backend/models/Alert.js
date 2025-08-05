@@ -68,6 +68,7 @@ const Alert = sequelize.define('Alert', {
 }, {
   tableName: 'alerts',
   timestamps: true,
+  underscored: true,
   indexes: [
     {
       fields: ['user_id']

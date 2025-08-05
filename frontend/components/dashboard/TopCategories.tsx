@@ -109,7 +109,7 @@ export default function TopCategories({ categories }: TopCategoriesProps) {
               <div className="flex items-center space-x-3">
                 <div className="text-right">
                   <span className="text-sm font-medium text-gray-900">
-                    {category.percentage.toFixed(1)}%
+                    {Number.isFinite(category.percentage) ? category.percentage.toFixed(1) : '0.0'}%
                   </span>
                   
                   <div className="flex items-center mt-1">
@@ -131,7 +131,7 @@ export default function TopCategories({ categories }: TopCategoriesProps) {
                 <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
-                    animate={{ width: `${category.percentage}%` }}
+                    animate={{ width: `${Number.isFinite(category.percentage) ? category.percentage : 0}%` }}
                     transition={{ duration: 0.8, delay: index * 0.1 }}
                     className={`h-full ${
                       category.sentiment === 'positive' 

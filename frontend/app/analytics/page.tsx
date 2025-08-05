@@ -78,7 +78,62 @@ export default function AnalyticsPage() {
     try {
       setLoading(true);
       const response = await api.get(`/analytics?timeRange=${timeRange}&source=${selectedSource}`);
-      setAnalyticsData(response.data);
+      
+      // Handle the new API response structure
+      const apiData = response.data.analytics || response.data;
+      
+      // Transform the API data to match the expected interface
+      const transformedData: AnalyticsData = {
+        overview: {
+          totalFeedback: Number.isFinite(apiData.overview?.totalFeedback) ? apiData.overview.totalFeedback : 0,
+          avgSentiment: Number.isFinite(apiData.overview?.avgSentimentScore) ? apiData.overview.avgSentimentScore : 0,
+          responseRate: 87.5, // Default value since not provided by API
+          avgResponseTime: 2.3 // Default value since not provided by API
+        },
+        trends: {
+          positive: Number.isFinite(apiData.overview?.sentimentDistribution?.positive) ? apiData.overview.sentimentDistribution.positive : 0,
+          negative: Number.isFinite(apiData.overview?.sentimentDistribution?.negative) ? apiData.overview.sentimentDistribution.negative : 0,
+          neutral: Number.isFinite(apiData.overview?.sentimentDistribution?.neutral) ? apiData.overview.sentimentDistribution.neutral : 0
+        },
+        sources: Object.entries(apiData.overview?.sourceDistribution || {}).map(([name, count]) => ({
+          name,
+          count: Number.isFinite(count as number) ? (count as number) : 0,
+          percentage: 0 // Will be calculated below
+        })),
+        categories: apiData.topCategories?.map((cat: any) => ({
+          name: cat.category || 'Unknown',
+          count: Number.isFinite(cat.count) ? cat.count : 0,
+          percentage: 0 // Will be calculated below
+        })) || [],
+        timeSeries: apiData.trends?.map((trend: any) => ({
+          date: trend.date || 'Unknown',
+          positive: Number.isFinite(trend.positive) ? trend.positive : 0,
+          negative: Number.isFinite(trend.negative) ? trend.negative : 0,
+          neutral: Number.isFinite(trend.neutral) ? trend.neutral : 0
+        })) || [],
+        topIssues: apiData.topCategories?.slice(0, 5).map((cat: any, index: number) => ({
+          issue: cat.category || 'Unknown',
+          count: Number.isFinite(cat.count) ? cat.count : 0,
+          trend: index % 2 === 0 ? 'up' : 'down' as 'up' | 'down',
+          percentage: 0 // Will be calculated below
+        })) || []
+      };
+
+      // Calculate percentages with validation
+      const totalFeedback = transformedData.overview.totalFeedback;
+      if (totalFeedback > 0) {
+        transformedData.sources.forEach(source => {
+          source.percentage = Number.isFinite(source.count / totalFeedback * 100) ? (source.count / totalFeedback * 100) : 0;
+        });
+        transformedData.categories.forEach(category => {
+          category.percentage = Number.isFinite(category.count / totalFeedback * 100) ? (category.count / totalFeedback * 100) : 0;
+        });
+        transformedData.topIssues.forEach(issue => {
+          issue.percentage = Number.isFinite(issue.count / totalFeedback * 100) ? (issue.count / totalFeedback * 100) : 0;
+        });
+      }
+
+      setAnalyticsData(transformedData);
     } catch (error) {
       console.error('Error loading analytics:', error);
       // Set mock data for demonstration

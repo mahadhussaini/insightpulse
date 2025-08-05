@@ -36,14 +36,25 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
       className
     );
 
-    const MotionComponent = hover ? motion.div : 'div';
+    // Check if any motion props are being passed from parent
+    const hasMotionProps = (props as any).whileHover || (props as any).whileTap || (props as any).whileFocus || (props as any).initial || (props as any).animate || (props as any).exit || (props as any).transition;
+    
+    // Only use motion.div if hover is true AND no motion props are passed from parent
+    const MotionComponent = (hover && !hasMotionProps) ? motion.div : 'div';
+
+    // Filter out Framer Motion props when not using motion
+    const motionProps = (hover && !hasMotionProps) ? {
+      whileHover: { y: -2 }
+    } : {};
+
+    // Filter out motion props from regular props when not using motion
+    const { whileHover, whileTap, whileFocus, initial, animate, exit, transition, ...domProps } = props as any;
 
     return (
       <MotionComponent
         ref={ref}
         className={classes}
-        whileHover={hover ? { y: -2 } : undefined}
-        {...(props as any)}
+        {...(hover && !hasMotionProps ? { ...motionProps, ...domProps } : domProps)}
       >
         {children}
       </MotionComponent>

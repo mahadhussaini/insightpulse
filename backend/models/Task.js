@@ -75,6 +75,7 @@ const Task = sequelize.define('Task', {
 }, {
   tableName: 'tasks',
   timestamps: true,
+  underscored: true,
   indexes: [
     {
       fields: ['user_id']

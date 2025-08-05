@@ -175,6 +175,7 @@ const Feedback = sequelize.define('Feedback', {
   }
 }, {
   timestamps: true,
+  underscored: true,
   indexes: [
     {
       fields: ['user_id', 'created_at']

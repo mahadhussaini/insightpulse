@@ -120,12 +120,16 @@ export default function Dashboard() {
 
       setDashboardData({
         metrics: {
-          totalFeedback: overviewRes.data.overview.totalFeedback,
-          sentimentScore: overviewRes.data.overview.avgSentimentScore,
-          responseRate: overviewRes.data.overview.resolutionRate,
+          totalFeedback: Number.isFinite(overviewRes.data.overview.totalFeedback) ? overviewRes.data.overview.totalFeedback : 0,
+          sentimentScore: Number.isFinite(overviewRes.data.overview.avgSentimentScore) ? overviewRes.data.overview.avgSentimentScore : 0,
+          responseRate: Number.isFinite(overviewRes.data.overview.resolutionRate) ? overviewRes.data.overview.resolutionRate : 0,
           avgResponseTime: 0 // Not available in current API
         },
-        trends: analyticsRes.data.trends,
+        trends: {
+          positive: Number.isFinite(analyticsRes.data.trends?.positive) ? analyticsRes.data.trends.positive : 0,
+          negative: Number.isFinite(analyticsRes.data.trends?.negative) ? analyticsRes.data.trends.negative : 0,
+          neutral: Number.isFinite(analyticsRes.data.trends?.neutral) ? analyticsRes.data.trends.neutral : 0
+        },
         recentFeedback: [], // Not available in current API
         alerts: [], // Not available in current API
         topCategories: overviewRes.data.overview.topSources || [],

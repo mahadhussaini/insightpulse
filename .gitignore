@@ -105,3 +105,6 @@ coverage/
 # Misc
 *.tgz
 *.tar.gz 
+
+# Postman
+InsightPulse_API_Collection.json

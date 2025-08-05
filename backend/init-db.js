@@ -1,6 +1,7 @@
 const { sequelize } = require('./config/database');
+const bcrypt = require('bcryptjs');
 
-// Import all models
+// Import models
 const User = require('./models/User');
 const Feedback = require('./models/Feedback');
 const Integration = require('./models/Integration');
@@ -9,159 +10,304 @@ const Task = require('./models/Task');
 
 async function initializeDatabase() {
   try {
-    console.log('🔄 Initializing database...');
-    
+    console.log('🚀 Starting database initialization...');
+
     // Test database connection
     await sequelize.authenticate();
     console.log('✅ Database connection established successfully.');
+
+    // Sync all models
+    console.log('📦 Syncing database models...');
+    await sequelize.sync({ force: true }); // Use force: true to recreate tables
+    console.log('✅ Database models synchronized.');
+
+    // Create default admin user
+    console.log('👤 Creating default admin user...');
+    const hashedPassword = await bcrypt.hash('admin123', 12);
     
-    // Sync models in dependency order to avoid foreign key issues
-    console.log('📦 Syncing User model...');
-    await User.sync({ force: false, alter: true });
-    
-    console.log('📦 Syncing Feedback model...');
-    await Feedback.sync({ force: false, alter: true });
-    
-    console.log('📦 Syncing Integration model...');
-    await Integration.sync({ force: false, alter: true });
-    
-    console.log('📦 Syncing Alert model...');
-    await Alert.sync({ force: false, alter: true });
-    
-    console.log('📦 Syncing Task model...');
-    await Task.sync({ force: false, alter: true });
-    
-    console.log('✅ Database tables synchronized successfully.');
-    
-    // Create default admin user if it doesn't exist
-    let adminUser = await User.findOne({ where: { email: 'admin@insightpulse.com' } });
-    if (!adminUser) {
-      adminUser = await User.create({
-        email: 'admin@insightpulse.com',
-        password: 'admin123', // This will be hashed by the model hook
-        firstName: 'Admin',
-        lastName: 'User',
-        role: 'admin',
-        isEmailVerified: true,
-        subscription: {
-          plan: 'pro',
-          status: 'active',
-          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-          features: {
-            monthlyFeedback: 10000,
-            integrations: 10,
-            teamMembers: 5,
-            apiAccess: true,
-            prioritySupport: true
-          }
+    const adminUser = await User.create({
+      email: 'admin@insightpulse.com',
+      password: hashedPassword,
+      firstName: 'Admin',
+      lastName: 'User',
+      role: 'admin',
+      subscription: 'enterprise',
+      subscriptionStatus: 'active',
+      monthlyFeedbackLimit: 10000,
+      integrationsLimit: 50,
+      isEmailVerified: true,
+      preferences: {
+        dashboard: {
+          defaultView: 'overview',
+          refreshInterval: 300,
+          widgets: [
+            { id: 'sentiment-overview', type: 'chart', title: 'Sentiment Overview', enabled: true },
+            { id: 'recent-feedback', type: 'list', title: 'Recent Feedback', enabled: true },
+            { id: 'source-distribution', type: 'chart', title: 'Source Distribution', enabled: true },
+            { id: 'urgency-alerts', type: 'alerts', title: 'Urgency Alerts', enabled: true },
+            { id: 'ai-insights', type: 'insights', title: 'AI Insights', enabled: true }
+          ],
+          theme: 'light'
+        },
+        notifications: {
+          email: true,
+          slack: false,
+          browser: true
         }
-      });
-      console.log('✅ Default admin user created.');
+      }
+    });
+    console.log('✅ Default admin user created.');
+
+    // Create sample integrations
+    console.log('🔗 Creating sample integrations...');
+    const integrations = [
+      {
+        userId: adminUser.id,
+        name: 'Intercom',
+        type: 'intercom',
+        status: 'connected',
+        config: {
+          accessToken: 'sample_token',
+          workspaceId: 'sample_workspace'
+        },
+        lastSync: new Date(),
+        syncFrequency: 300 // 5 minutes
+      },
+      {
+        userId: adminUser.id,
+        name: 'Zendesk',
+        type: 'zendesk',
+        status: 'connected',
+        config: {
+          subdomain: 'sample',
+          email: 'admin@example.com',
+          apiToken: 'sample_token'
+        },
+        lastSync: new Date(),
+        syncFrequency: 600 // 10 minutes
+      },
+      {
+        userId: adminUser.id,
+        name: 'Twitter',
+        type: 'twitter',
+        status: 'connected',
+        config: {
+          apiKey: 'sample_key',
+          apiSecret: 'sample_secret',
+          accessToken: 'sample_token',
+          accessTokenSecret: 'sample_secret'
+        },
+        lastSync: new Date(),
+        syncFrequency: 1800 // 30 minutes
+      }
+    ];
+
+    for (const integration of integrations) {
+      await Integration.create(integration);
     }
-    
-    // Create sample feedback data
-    console.log('📦 Creating sample feedback data...');
+    console.log('✅ Sample integrations created.');
+
+    // Create sample feedback
+    console.log('📝 Creating sample feedback...');
     const sampleFeedback = [
       {
-        id: '550e8400-e29b-41d4-a716-446655440001',
         userId: adminUser.id,
+        content: 'The new dashboard is amazing! Really helps me understand customer sentiment better.',
         source: 'intercom',
-        sourceId: 'msg_001',
-        customerId: 'cust_001',
-        customerEmail: 'john@example.com',
-        customerName: 'John Doe',
-        content: 'The new feature is amazing! Really improved my workflow.',
-        title: 'Great new feature',
-        rating: 5,
         sentiment: 'positive',
-        sentimentScore: 0.9,
-        emotions: { joy: 0.8, satisfaction: 0.7 },
+        sentimentScore: 0.8,
         urgency: 'low',
-        categories: ['feature-request', 'positive'],
-        tags: ['new-feature', 'workflow'],
-        language: 'en',
-        location: 'US',
-        device: 'desktop',
-        platform: 'web',
-        metadata: { browser: 'Chrome', os: 'Windows' },
-        isProcessed: true,
-        processingStatus: 'completed',
-        aiInsights: { summary: 'Positive feedback about new feature', actionItems: [] },
-        isResolved: false,
-        originalData: {}
+        categories: 'feature_request',
+        tags: ['dashboard', 'positive', 'feature'],
+        customerName: 'Sarah Johnson',
+        customerEmail: 'sarah@example.com',
+        rating: 5,
+        isResolved: true,
+        isFlagged: false
       },
       {
-        id: '550e8400-e29b-41d4-a716-446655440002',
         userId: adminUser.id,
+        content: 'Having issues with the mobile app crashing when I try to upload images.',
         source: 'zendesk',
-        sourceId: 'ticket_002',
-        customerId: 'cust_002',
-        customerEmail: 'sarah@example.com',
-        customerName: 'Sarah Smith',
-        content: 'Having trouble with the login system. Getting error messages.',
-        title: 'Login issues',
-        rating: 2,
         sentiment: 'negative',
         sentimentScore: -0.6,
-        emotions: { frustration: 0.7, anger: 0.3 },
         urgency: 'high',
-        categories: ['bug-report', 'login'],
-        tags: ['login', 'error', 'urgent'],
-        language: 'en',
-        location: 'CA',
-        device: 'mobile',
-        platform: 'ios',
-        metadata: { browser: 'Safari', os: 'iOS' },
-        isProcessed: true,
-        processingStatus: 'completed',
-        aiInsights: { summary: 'Login system issues causing user frustration', actionItems: ['Investigate login errors', 'Check mobile compatibility'] },
+        categories: 'bug_report',
+        tags: ['mobile', 'crash', 'bug', 'urgent'],
+        customerName: 'Mike Chen',
+        customerEmail: 'mike@example.com',
+        rating: 2,
         isResolved: false,
-        originalData: {}
+        isFlagged: true
       },
       {
-        id: '550e8400-e29b-41d4-a716-446655440003',
         userId: adminUser.id,
-        source: 'app-store',
-        sourceId: 'review_003',
-        customerId: 'cust_003',
-        customerEmail: 'mike@example.com',
-        customerName: 'Mike Johnson',
-        content: 'The app is good but could use some improvements in the UI.',
-        title: 'Good app, needs UI improvements',
-        rating: 4,
+        content: 'Love the new AI insights feature! It\'s exactly what we needed.',
+        source: 'intercom',
+        sentiment: 'positive',
+        sentimentScore: 0.9,
+        urgency: 'low',
+        categories: 'praise',
+        tags: ['ai', 'insights', 'positive'],
+        customerName: 'Emily Davis',
+        customerEmail: 'emily@example.com',
+        rating: 5,
+        isResolved: true,
+        isFlagged: false
+      },
+      {
+        userId: adminUser.id,
+        content: 'The pricing seems a bit high for small teams like ours.',
+        source: 'twitter',
         sentiment: 'neutral',
         sentimentScore: 0.1,
-        emotions: { satisfaction: 0.5, neutral: 0.4 },
         urgency: 'medium',
-        categories: ['ui-ux', 'improvement'],
-        tags: ['ui', 'improvement', 'app-store'],
-        language: 'en',
-        location: 'UK',
-        device: 'mobile',
-        platform: 'android',
-        metadata: { browser: 'Chrome Mobile', os: 'Android' },
-        isProcessed: true,
-        processingStatus: 'completed',
-        aiInsights: { summary: 'Mixed feedback about UI, room for improvement', actionItems: ['Review UI/UX design', 'Consider user interface updates'] },
+        categories: 'pricing',
+        tags: ['pricing', 'feedback'],
+        customerName: 'Alex Rodriguez',
+        customerEmail: 'alex@example.com',
+        rating: 3,
         isResolved: false,
-        originalData: {}
+        isFlagged: false
+      },
+      {
+        userId: adminUser.id,
+        content: 'Critical bug: Users can\'t save their work. This is blocking our entire team.',
+        source: 'zendesk',
+        sentiment: 'negative',
+        sentimentScore: -0.9,
+        urgency: 'critical',
+        categories: 'bug_report',
+        tags: ['critical', 'bug', 'blocking'],
+        customerName: 'David Wilson',
+        customerEmail: 'david@example.com',
+        rating: 1,
+        isResolved: false,
+        isFlagged: true
+      },
+      {
+        userId: adminUser.id,
+        content: 'Great customer support! The team was very helpful and resolved my issue quickly.',
+        source: 'intercom',
+        sentiment: 'positive',
+        sentimentScore: 0.7,
+        urgency: 'low',
+        categories: 'praise',
+        tags: ['support', 'positive'],
+        customerName: 'Lisa Thompson',
+        customerEmail: 'lisa@example.com',
+        rating: 5,
+        isResolved: true,
+        isFlagged: false
+      },
+      {
+        userId: adminUser.id,
+        content: 'Would be great to have more integration options with other tools we use.',
+        source: 'twitter',
+        sentiment: 'neutral',
+        sentimentScore: 0.2,
+        urgency: 'low',
+        categories: 'feature_request',
+        tags: ['integrations', 'feature'],
+        customerName: 'Tom Anderson',
+        customerEmail: 'tom@example.com',
+        rating: 4,
+        isResolved: false,
+        isFlagged: false
+      },
+      {
+        userId: adminUser.id,
+        content: 'The app is too slow and keeps freezing. Need this fixed ASAP.',
+        source: 'zendesk',
+        sentiment: 'negative',
+        sentimentScore: -0.8,
+        urgency: 'high',
+        categories: 'performance',
+        tags: ['performance', 'slow', 'urgent'],
+        customerName: 'Rachel Green',
+        customerEmail: 'rachel@example.com',
+        rating: 2,
+        isResolved: false,
+        isFlagged: true
       }
     ];
 
     for (const feedback of sampleFeedback) {
       await Feedback.create(feedback);
     }
+    console.log('✅ Sample feedback created.');
 
-    console.log('✅ Sample feedback data created.');
+    // Create sample alerts
+    console.log('🚨 Creating sample alerts...');
+    const sampleAlerts = [
+      {
+        userId: adminUser.id,
+        type: 'sentiment_spike',
+        title: 'Negative Sentiment Spike',
+        message: '5 negative feedback items in the last hour',
+        severity: 'medium',
+        isRead: false,
+        metadata: {
+          count: 5,
+          timeWindow: '1h',
+          sources: ['zendesk', 'intercom']
+        }
+      },
+      {
+        userId: adminUser.id,
+        type: 'urgent_feedback',
+        title: 'Critical Bug Reported',
+        message: 'User reported critical bug blocking their work',
+        severity: 'critical',
+        isRead: false,
+        metadata: {
+          feedbackId: sampleFeedback[4].id,
+          urgency: 'critical'
+        }
+      }
+    ];
 
-    console.log('🎉 Database initialization completed successfully!');
-    console.log('📊 Available tables:');
-    console.log('   - Users');
-    console.log('   - Feedback');
-    console.log('   - Integrations');
-    console.log('   - Alerts');
-    console.log('   - Tasks');
-    
+    for (const alert of sampleAlerts) {
+      await Alert.create(alert);
+    }
+    console.log('✅ Sample alerts created.');
+
+    // Create sample tasks
+    console.log('📋 Creating sample tasks...');
+    const sampleTasks = [
+      {
+        userId: adminUser.id,
+        title: 'Investigate mobile app crash',
+        description: 'Look into the mobile app crash issue reported by users',
+        status: 'in_progress',
+        priority: 'high',
+        dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
+        assignedTo: adminUser.id,
+        tags: ['mobile', 'bug', 'urgent']
+      },
+      {
+        userId: adminUser.id,
+        title: 'Review pricing feedback',
+        description: 'Analyze customer feedback about pricing and propose improvements',
+        status: 'todo',
+        priority: 'medium',
+        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Next week
+        assignedTo: adminUser.id,
+        tags: ['pricing', 'feedback']
+      }
+    ];
+
+    for (const task of sampleTasks) {
+      await Task.create(task);
+    }
+    console.log('✅ Sample tasks created.');
+
+    console.log('\n🎉 Database initialization completed successfully!');
+    console.log('\n📋 Default credentials:');
+    console.log('   Email: admin@insightpulse.com');
+    console.log('   Password: admin123');
+    console.log('\n🔗 Access your dashboard at: http://localhost:3000');
+
   } catch (error) {
     console.error('❌ Database initialization failed:', error);
     process.exit(1);
@@ -170,5 +316,9 @@ async function initializeDatabase() {
   }
 }
 
-// Run the initialization
-initializeDatabase(); 
+// Run initialization if this file is executed directly
+if (require.main === module) {
+  initializeDatabase();
+}
+
+module.exports = { initializeDatabase }; 

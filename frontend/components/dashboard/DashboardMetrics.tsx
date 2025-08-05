@@ -82,7 +82,8 @@ export default function DashboardMetrics({ metrics }: MetricsProps) {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       {metricCards.map((card, index) => {
         const Icon = card.icon;
-        const value = metrics[card.key as keyof typeof metrics];
+        const rawValue = metrics[card.key as keyof typeof metrics];
+        const value = Number.isFinite(rawValue) ? rawValue : 0;
         
         return (
           <motion.div
